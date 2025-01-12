@@ -47,7 +47,7 @@ app.use('/api/futures',futureRoutes)
 app.use('/api/summary',summaryRoutes)
 
 // Database connection
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('MongoDB connected'))
     .catch(err => console.log('Database connection error:', err));
 
