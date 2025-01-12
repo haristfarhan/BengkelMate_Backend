@@ -30,6 +30,11 @@ app.use((err, req, res, next) => {
 });
 
 // Routes
+
+app.get('/', (req,res) => {
+    req.json("Hello");
+})
+
 app.use('/api/auth', authRoutes); // Rute autentikasi
 app.use('/api/tickets', serviceRoutes); // Rute servis kendaraan
 app.use('/api/customers', customerRoutes); // Rute data customer
