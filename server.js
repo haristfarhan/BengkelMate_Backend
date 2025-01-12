@@ -32,7 +32,7 @@ app.use((err, req, res, next) => {
 // Routes
 
 app.get('/', (req,res) => {
-    req.json("Hello");
+    res.json("Hello");
 })
 
 app.use('/api/auth', authRoutes); // Rute autentikasi
