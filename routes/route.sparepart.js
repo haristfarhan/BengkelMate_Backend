@@ -23,7 +23,7 @@ router.post('/', async (req, res) => {
 // Get All Spareparts (GET)
 router.get('/', async (req, res) => {
   try {
-    const spareparts = await Sparepart.find();
+    const spareparts = await Sparepart.find({isDeleted: false});
     res.status(200).json({ spareparts });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching spareparts', error });
