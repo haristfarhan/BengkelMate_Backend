@@ -21,6 +21,9 @@ const sparepartSchema = new mongoose.Schema({
     required: true,
     min: 0, // Harga tidak boleh negatif
   },
+  isDeleted: { 
+    type: Boolean, default: false 
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -35,9 +35,11 @@ router.get('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const sparepart = await Sparepart.findById(id);
+    // Cari sparepart berdasarkan ID dan pastikan tidak "dihapus" (isDeleted: false)
+    const sparepart = await Sparepart.findOne({ _id: id, isDeleted: false });
+
     if (!sparepart) {
-      return res.status(404).json({ message: 'Sparepart not found' });
+      return res.status(404).json({ message: 'Sparepart not found or has been deleted' });
     }
 
     res.status(200).json({ sparepart });
@@ -45,6 +47,7 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: 'Error fetching sparepart', error });
   }
 });
+
 
 // Update Sparepart (PUT - Full Update)
 router.put('/:id', async (req, res) => {
@@ -96,21 +99,27 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Delete Sparepart (DELETE)
+// Soft Delete Sparepart (DELETE)
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deletedSparepart = await Sparepart.findByIdAndDelete(id);
+    // Update isDeleted menjadi true untuk soft delete
+    const deletedSparepart = await Sparepart.findByIdAndUpdate(
+      id,
+      { isDeleted: true }, // Soft delete dengan menandai `isDeleted` sebagai true
+      { new: true } // Mengembalikan data yang diperbarui
+    );
 
     if (!deletedSparepart) {
       return res.status(404).json({ message: 'Sparepart not found' });
     }
 
-    res.status(200).json({ message: 'Sparepart deleted successfully' });
+    res.status(200).json({ message: 'Sparepart deleted successfully', data: deletedSparepart });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting sparepart', error });
   }
 });
+
 
 export default router;

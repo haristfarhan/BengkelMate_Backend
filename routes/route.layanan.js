@@ -23,21 +23,24 @@ router.post('/', async (req, res) => {
 // Get All Layanan (GET)
 router.get('/', async (req, res) => {
   try {
-    const layanan = await Layanan.find();
+    const layanan = await Layanan.find({ isDeleted: false }); // Tambahkan filter isDeleted
     res.status(200).json({ layanan });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching layanan', error });
   }
 });
 
+
 // Get Layanan by ID (GET by ID)
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const layanan = await Layanan.findById(id);
+    // Cari layanan berdasarkan ID dan pastikan tidak dihapus
+    const layanan = await Layanan.findOne({ _id: id, isDeleted: false });
+
     if (!layanan) {
-      return res.status(404).json({ message: 'Layanan not found' });
+      return res.status(404).json({ message: 'Layanan not found or has been deleted' });
     }
 
     res.status(200).json({ layanan });
@@ -45,6 +48,7 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: 'Error fetching layanan', error });
   }
 });
+
 
 // Update Layanan (PUT - Full Update)
 router.put('/:id', async (req, res) => {
@@ -96,21 +100,27 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Delete Layanan (DELETE)
+// Soft Delete Layanan (DELETE)
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deletedLayanan = await Layanan.findByIdAndDelete(id);
+    // Update isDeleted menjadi true untuk soft delete
+    const deletedLayanan = await Layanan.findByIdAndUpdate(
+      id,
+      { isDeleted: true }, // Soft delete dengan menandai `isDeleted` true
+      { new: true } // Mengembalikan data yang diperbarui
+    );
 
     if (!deletedLayanan) {
       return res.status(404).json({ message: 'Layanan not found' });
     }
 
-    res.status(200).json({ message: 'Layanan deleted successfully' });
+    res.status(200).json({ message: 'Layanan deleted successfully', data: deletedLayanan });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting layanan', error });
   }
 });
+
 
 export default router;
