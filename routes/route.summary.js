@@ -2,7 +2,7 @@ import { Router } from 'express';
 import Summary from '../models/summary.js';
 import Layanan from '../models/layanan.js';
 import Sparepart from '../models/sparepart.js';
-import PKB from '../models/pkb.js'
+import PKB from '../models/pkb.js';
 
 const router = Router();
 
@@ -53,6 +53,7 @@ router.post('/', async (req, res) => {
     if (!pkb) {
       return res.status(404).json({ message: `PKB with No PKB "${noPkb}" not found` });
     }
+
     // Hitung detail layanan, sparepart, dan total harga
     const { totalHarga, layananDetails, sparepartDetails } = await calculateDetails(layanan, sparepart);
 
@@ -66,9 +67,14 @@ router.post('/', async (req, res) => {
 
     await newSummary.save();
 
+    // Hubungkan Summary ke PKB
+    pkb.summary = newSummary._id;
+    await pkb.save();
+
     res.status(201).json({
-      message: 'Summary created successfully',
+      message: 'Summary created successfully and linked to PKB',
       summary: newSummary,
+      pkb,
     });
   } catch (error) {
     res.status(500).json({ message: 'Error creating summary', error: error.message });
@@ -78,7 +84,16 @@ router.post('/', async (req, res) => {
 // Get All Summaries (GET)
 router.get('/', async (req, res) => {
   try {
-    const summaries = await Summary.find();
+    const summaries = await Summary.find()
+      .populate({
+        path: 'layanan',
+        select: 'namaLayanan harga quantity total',
+      })
+      .populate({
+        path: 'sparepart',
+        select: 'namaPart harga quantity total',
+      });
+
     res.status(200).json({ summaries });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching summaries', error });
@@ -90,7 +105,15 @@ router.get('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const summary = await Summary.findById(id);
+    const summary = await Summary.findById(id)
+      .populate({
+        path: 'layanan',
+        select: 'namaLayanan harga quantity total',
+      })
+      .populate({
+        path: 'sparepart',
+        select: 'namaPart harga quantity total',
+      });
 
     if (!summary) {
       return res.status(404).json({ message: 'Summary not found' });
