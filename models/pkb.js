@@ -26,18 +26,23 @@ const pkbSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  layanan: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Layanan', // Referensi ke koleksi Layanan
-    },
-  ],
-  spareparts: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Sparepart', // Referensi ke koleksi Sparepart
-    },
-  ],
+  // layanan: [
+  //   {
+  //     type: mongoose.Schema.Types.ObjectId,
+  //     ref: 'Layanan', // Referensi ke koleksi Layanan
+  //   },
+  // ],
+  // spareparts: [
+  //   {
+  //     type: mongoose.Schema.Types.ObjectId,
+  //     ref: 'Sparepart', // Referensi ke koleksi Sparepart
+  //   },
+  // ],
+  summary: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Summary', // Referensi ke Summary
+    default: null, // Bisa null jika Summary belum ada
+  },
   responsMekanik: {
     type: String,
     default: '-',

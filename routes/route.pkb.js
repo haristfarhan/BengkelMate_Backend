@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import PKB from '../models/pkb.js';
+import Summary from '../models/summary.js';
 import Customer from '../models/customer.js';
 import Vehicle from '../models/vehicle.js';
-import Layanan from '../models/layanan.js';
-import Sparepart from '../models/sparepart.js';
 
 const router = Router();
 
@@ -12,15 +11,14 @@ const generateNoPkb = async () => {
   const lastPkb = await PKB.findOne().sort({ noPkb: -1 });
   if (lastPkb) {
     const lastNumber = parseInt(lastPkb.noPkb, 10);
-    const newNumber = (lastNumber + 1).toString().padStart(12, '0');
-    return newNumber;
+    return (lastNumber + 1).toString().padStart(12, '0');
   }
   return '000000000001';
 };
 
 // Create PKB (POST)
 router.post('/', async (req, res) => {
-  const { tanggalWaktu, kilometer, keluhan, namaMekanik, namaSa, layananNames, sparepartNames, responsMekanik, customerName, noRangka } = req.body;
+  const { tanggalWaktu, kilometer, keluhan, namaMekanik, namaSa, customerName, noRangka } = req.body;
 
   try {
     // Cari Customer berdasarkan nama
@@ -35,18 +33,6 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
 
-    // Cari Layanan berdasarkan array nama layanan
-    const layanan = await Layanan.find({ namaLayanan: { $in: layananNames } });
-    if (layanan.length !== layananNames.length) {
-      return res.status(404).json({ message: 'Some layanan not found' });
-    }
-
-    // Cari Sparepart berdasarkan array nama part
-    const spareparts = await Sparepart.find({ namaPart: { $in: sparepartNames } });
-    if (spareparts.length !== sparepartNames.length) {
-      return res.status(404).json({ message: 'Some spareparts not found' });
-    }
-
     const noPkb = await generateNoPkb();
 
     const newPkb = new PKB({
@@ -56,11 +42,9 @@ router.post('/', async (req, res) => {
       keluhan,
       namaMekanik,
       namaSa,
-      layanan: layanan.map(l => l._id),
-      spareparts: spareparts.map(s => s._id),
-      responsMekanik,
       customer: customer._id,
       vehicle: vehicle._id,
+      summary: null, // Summary belum dihubungkan
     });
 
     await newPkb.save();
@@ -80,8 +64,13 @@ router.get('/', async (req, res) => {
     const pkbs = await PKB.find()
       .populate('customer', 'nama alamat noTelp')
       .populate('vehicle', 'noPolisi noRangka noMesin tipe tahun produk kilometer')
-      .populate('layanan', 'namaLayanan deskripsi harga')
-      .populate('spareparts', 'namaPart number harga stock');
+      .populate({
+        path: 'summary',
+        populate: [
+          { path: 'layanan', select: 'namaLayanan harga total' },
+          { path: 'sparepart', select: 'namaPart harga total' },
+        ],
+      });
 
     res.status(200).json({ pkbs });
   } catch (error) {
@@ -97,8 +86,13 @@ router.get('/:id', async (req, res) => {
     const pkb = await PKB.findById(id)
       .populate('customer', 'nama alamat noTelp')
       .populate('vehicle', 'noPolisi noRangka noMesin tipe tahun produk kilometer')
-      .populate('layanan', 'namaLayanan deskripsi harga')
-      .populate('spareparts', 'namaPart number harga stock');
+      .populate({
+        path: 'summary',
+        populate: [
+          { path: 'layanan', select: 'namaLayanan harga total' },
+          { path: 'sparepart', select: 'namaPart harga total' },
+        ],
+      });
 
     if (!pkb) {
       return res.status(404).json({ message: 'PKB not found' });
@@ -113,58 +107,10 @@ router.get('/:id', async (req, res) => {
 // Update PKB (PUT)
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { tanggalWaktu, kilometer, keluhan, namaMekanik, namaSa, layananNames, sparepartNames, responsMekanik, customerName, noRangka } = req.body;
+  const updates = req.body;
 
   try {
-    let customer;
-    if (customerName) {
-      customer = await Customer.findOne({ nama: customerName });
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-    }
-
-    let vehicle;
-    if (noRangka) {
-      vehicle = await Vehicle.findOne({ noRangka });
-      if (!vehicle) {
-        return res.status(404).json({ message: 'Vehicle not found' });
-      }
-    }
-
-    let layanan;
-    if (layananNames) {
-      layanan = await Layanan.find({ namaLayanan: { $in: layananNames } });
-      if (layanan.length !== layananNames.length) {
-        return res.status(404).json({ message: 'Some layanan not found' });
-      }
-    }
-
-    let spareparts;
-    if (sparepartNames) {
-      spareparts = await Sparepart.find({ namaPart: { $in: sparepartNames } });
-      if (spareparts.length !== sparepartNames.length) {
-        return res.status(404).json({ message: 'Some spareparts not found' });
-      }
-    }
-
-    const updatedPkb = await PKB.findByIdAndUpdate(
-      id,
-      {
-        tanggalWaktu,
-        kilometer,
-        keluhan,
-        namaMekanik,
-        namaSa,
-        layanan: layanan ? layanan.map(l => l._id) : undefined,
-        spareparts: spareparts ? spareparts.map(s => s._id) : undefined,
-        responsMekanik,
-        customer: customer ? customer._id : undefined,
-        vehicle: vehicle ? vehicle._id : undefined,
-      },
-      { new: true, runValidators: true }
-    );
-
+    const updatedPkb = await PKB.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
     if (!updatedPkb) {
       return res.status(404).json({ message: 'PKB not found' });
     }
@@ -178,36 +124,35 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Partial Update PKB (PATCH)
-router.patch('/:id', async (req, res) => {
+// Patch Summary to PKB (PATCH Summary)
+router.patch('/:id/summary', async (req, res) => {
   const { id } = req.params;
-  const updates = req.body;
+  const { summaryId } = req.body;
 
   try {
-    if (updates.layananNames) {
-      const layanan = await Layanan.find({ namaLayanan: { $in: updates.layananNames } });
-      updates.layanan = layanan.map(l => l._id);
-      delete updates.layananNames;
+    // Validasi Summary
+    const summary = await Summary.findById(summaryId);
+    if (!summary) {
+      return res.status(404).json({ message: 'Summary not found' });
     }
 
-    if (updates.sparepartNames) {
-      const spareparts = await Sparepart.find({ namaPart: { $in: updates.sparepartNames } });
-      updates.spareparts = spareparts.map(s => s._id);
-      delete updates.sparepartNames;
-    }
-
-    const updatedPkb = await PKB.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
+    // Update PKB untuk menambahkan referensi Summary
+    const updatedPkb = await PKB.findByIdAndUpdate(
+      id,
+      { summary: summaryId },
+      { new: true, runValidators: true }
+    );
 
     if (!updatedPkb) {
       return res.status(404).json({ message: 'PKB not found' });
     }
 
     res.status(200).json({
-      message: 'PKB partially updated successfully',
+      message: 'Summary added to PKB successfully',
       pkb: updatedPkb,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating PKB', error });
+    res.status(500).json({ message: 'Error updating PKB with Summary', error });
   }
 });
 
