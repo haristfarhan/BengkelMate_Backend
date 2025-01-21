@@ -19,12 +19,12 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors());
-// app.use(cors({
-//     origin: process.env.FRONTEND_URL, // Ganti dengan URL frontend Anda
-//     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Metode yang diizinkan
-//     credentials: true, // Jika Anda menggunakan cookies atau credentials
-//   }));
+// app.use(cors());
+app.use(cors({
+    origin: process.env.FRONTEND_URL, // Ganti dengan URL frontend Anda
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Metode yang diizinkan
+    credentials: true, // Jika Anda menggunakan cookies atau credentials
+  }));
 app.use(express.json());
 app.use(bodyParser.json());
 
