@@ -21,7 +21,7 @@ const app = express();
 // Middleware
 // app.use(cors());
 app.use(cors({
-    origin: 'http://localhost:3000', // Ganti dengan URL frontend Anda
+    origin: process.env.FRONTEND_URL, // Ganti dengan URL frontend Anda
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Metode yang diizinkan
     credentials: true, // Jika Anda menggunakan cookies atau credentials
   }));
