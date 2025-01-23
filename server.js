@@ -37,29 +37,9 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something broke!');
 });
 
-// Konfigurasi Multer
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, './uploads'); // Folder untuk menyimpan file sementara
-    },
-    filename: (req, file, cb) => {
-      cb(null, `${Date.now()}-${file.originalname}`);
-    },
-  });
-  
-  const fileFilter = (req, file, cb) => {
-    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-      cb(null, true);
-    } else {
-      cb(new Error('File must be an Excel file'), false);
-    }
-  };
-  
-  const upload = multer({
-    storage,
-    fileFilter,
-  });
-
+// Konfigurasi Multer untuk menyimpan file di memori
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Routes
 app.get('/', (req,res) => {
