@@ -10,10 +10,13 @@ import customerRoutes from './routes/route.customer.js' // rute customer
 import vehicleRoutes from './routes/route.vehicle.js'// rute kendaraan
 import pkbRoutes from './routes/route.pkb.js' // rute PKB
 import sparepartRoutes from './routes/route.sparepart.js'
+import sparepart2Routes from './routes/route.sparepart_2.js'
 import layananRoutes from './routes/route.layanan.js'
 import progressRoutes from './routes/route.progress.js'
 import futureRoutes from './routes/route.future.js'
 import summaryRoutes from './routes/route.summary.js'
+import multer from 'multer';
+import path from 'path';
 
 dotenv.config();
 const app = express();
@@ -34,8 +37,31 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something broke!');
 });
 
-// Routes
+// Konfigurasi Multer
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, './uploads'); // Folder untuk menyimpan file sementara
+    },
+    filename: (req, file, cb) => {
+      cb(null, `${Date.now()}-${file.originalname}`);
+    },
+  });
+  
+  const fileFilter = (req, file, cb) => {
+    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      cb(null, true);
+    } else {
+      cb(new Error('File must be an Excel file'), false);
+    }
+  };
+  
+  const upload = multer({
+    storage,
+    fileFilter,
+  });
 
+
+// Routes
 app.get('/', (req,res) => {
     res.send("Hello");
 })
@@ -50,6 +76,7 @@ app.use('/api/layanan', layananRoutes)
 app.use('/api/progress', progressRoutes)
 app.use('/api/futures',futureRoutes)
 app.use('/api/summary',summaryRoutes)
+app.use('/api/sparepart_2',sparepart2Routes)
 
 // Database connection
 mongoose.connect(process.env.MONGO_URI)
