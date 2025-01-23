@@ -31,15 +31,22 @@ app.use(cors({
 app.use(express.json());
 app.use(bodyParser.json());
 
+// Konfigurasi Multer untuk menyimpan file di memori
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+// Tambahkan Multer sebagai middleware global
+app.use((req, res, next) => {
+    req.upload = upload; // Simpan instance Multer ke dalam request object
+    next();
+  });
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send('Something broke!');
 });
 
-// Konfigurasi Multer untuk menyimpan file di memori
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 // Routes
 app.get('/', (req,res) => {
