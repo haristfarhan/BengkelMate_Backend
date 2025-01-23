@@ -3,7 +3,9 @@ node_modules/
 
 # Environment variables
 .env
-/.gitkeep
+
+uploads/.gitkeep
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
