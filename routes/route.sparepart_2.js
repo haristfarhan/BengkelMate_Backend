@@ -21,57 +21,63 @@ router.post('/upload', async (req, res) => {
       // Membaca file dari buffer menggunakan xlsx
       const workbook = xlsx.read(file.buffer, { type: 'buffer' });
 
-      // Ambil sheet pertama dari file Excel
+      // Ambil sheet pertama
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
       // Konversi sheet ke JSON
       const data = xlsx.utils.sheet_to_json(sheet);
 
-      // Proses data
-      for (const row of data) {
-        const materialNumber = row['Material']; // Kolom "Material"
-        const materialName = row['Material Name']; // Kolom "Material Name"
-        const totalQty = row['Total Qty.']; // Kolom "Total Qty."
-        const retailPrice = row['retail ']; // Kolom "Retail"
-
-        // Validasi data wajib
-        if (!materialNumber || !materialName || totalQty === undefined || retailPrice === undefined) {
-          return res.status(400).json({
-            message: `Invalid row: Material, Material Name, Total Qty., and Retail are required.`,
-          });
-        }
-
-        // Cari material berdasarkan number di database
-        const existingSparepart = await Sparepart_2.findOne({ number: materialNumber });
-
-        if (existingSparepart) {
-          // Jika material sudah ada, perbarui datanya
-          existingSparepart.namaPart = materialName;
-          existingSparepart.stock = totalQty;
-          existingSparepart.harga = retailPrice;
-          existingSparepart.updatedAt = Date.now();
-
-          await existingSparepart.save();
-        } else {
-          // Jika material belum ada, buat data baru
-          const newSparepart = new Sparepart_2({
-            namaPart: materialName,
-            number: materialNumber,
-            stock: totalQty,
-            harga: retailPrice,
-          });
-
-          await newSparepart.save();
-        }
+      // Proses data: kelompokkan data menjadi batch (misal 100 data per batch)
+      const batchSize = 100;
+      const batches = [];
+      for (let i = 0; i < data.length; i += batchSize) {
+        batches.push(data.slice(i, i + batchSize));
       }
 
-      // Kirimkan respons berhasil
-      res.status(200).json({ message: 'Data updated successfully', processedCount: data.length });
+      let totalProcessed = 0;
+
+      // Proses tiap batch
+      for (const batch of batches) {
+        const bulkOps = batch.map((row) => {
+          const materialNumber = row['Material'];
+          const materialName = row['Material Name'];
+          const totalQty = row['Total Qty.'];
+          const retailPrice = row['retail '];
+
+          // Validasi kolom wajib
+          if (!materialNumber || !materialName || totalQty === undefined || retailPrice === undefined) {
+            throw new Error(`Invalid row: Material, Material Name, Total Qty., and Retail are required.`);
+          }
+
+          // Bulk operation: Upsert
+          return {
+            updateOne: {
+              filter: { number: materialNumber },
+              update: {
+                $set: {
+                  namaPart: materialName,
+                  stock: totalQty,
+                  harga: retailPrice,
+                  updatedAt: Date.now(),
+                },
+              },
+              upsert: true, // Buat dokumen baru jika tidak ada
+            },
+          };
+        });
+
+        // Jalankan operasi batch menggunakan bulkWrite
+        const result = await Sparepart_2.bulkWrite(bulkOps);
+        totalProcessed += result.nUpserted + result.nModified;
+      }
+
+      res.status(200).json({ message: 'Data updated successfully', totalProcessed });
     } catch (error) {
       res.status(500).json({ message: 'Error processing file', error: error.message });
     }
   });
 });
+
 
 
 // GET All Spareparts (Hanya yang tidak dihapus)
