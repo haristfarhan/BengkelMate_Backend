@@ -68,7 +68,7 @@ router.post('/upload', async (req, res) => {
 
         // Jalankan operasi batch menggunakan bulkWrite
         const result = await Sparepart_2.bulkWrite(bulkOps);
-        totalProcessed += result.nUpserted + result.nModified;
+        totalProcessed += result.upsertedCount + result.modifiedCount; // Tambahkan jumlah data yang diproses
       }
 
       res.status(200).json({ message: 'Data updated successfully', totalProcessed });
