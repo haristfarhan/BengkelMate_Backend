@@ -32,7 +32,7 @@ router.post('/upload', async (req, res) => {
         const materialNumber = row['Material']; // Kolom "Material"
         const materialName = row['Material Name']; // Kolom "Material Name"
         const totalQty = row['Total Qty.']; // Kolom "Total Qty."
-        const retailPrice = row['Retail']; // Kolom "Retail"
+        const retailPrice = row['retail ']; // Kolom "Retail"
 
         // Validasi data wajib
         if (!materialNumber || !materialName || totalQty === undefined || retailPrice === undefined) {
