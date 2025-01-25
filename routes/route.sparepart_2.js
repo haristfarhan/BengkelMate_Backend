@@ -38,6 +38,8 @@ router.post('/', async (req, res) => {
         }
 
         let totalProcessed = 0;
+        const updatedItems = [];
+        const newItems = [];
 
         // Proses tiap batch
         for (const batch of batches) {
@@ -71,10 +73,26 @@ router.post('/', async (req, res) => {
 
           // Jalankan operasi batch menggunakan bulkWrite
           const result = await Sparepart_2.bulkWrite(bulkOps);
-          totalProcessed += result.upsertedCount + result.modifiedCount; // Tambahkan jumlah data yang diproses
+
+          // Tambahkan jumlah data yang diproses
+          totalProcessed += result.upsertedCount + result.modifiedCount;
+
+          // Identifikasi data baru dan yang diperbarui
+          for (const op of bulkOps) {
+            if (result.upsertedIds[op.updateOne.filter.number]) {
+              newItems.push(op.updateOne.update.$set); // Data baru
+            } else {
+              updatedItems.push(op.updateOne.update.$set); // Data yang diperbarui
+            }
+          }
         }
 
-        res.status(200).json({ message: 'Data updated successfully', totalProcessed });
+        res.status(200).json({
+          message: 'Data updated successfully',
+          totalProcessed,
+          updatedItems,
+          newItems,
+        });
       } catch (error) {
         res.status(500).json({ message: 'Error processing file', error: error.message });
       }
@@ -84,18 +102,36 @@ router.post('/', async (req, res) => {
     const { namaPart, number, stock, harga } = req.body;
 
     try {
-      const newSparepart = new Sparepart_2({ namaPart, number, stock, harga });
-      await newSparepart.save();
+      const existingSparepart = await Sparepart_2.findOne({ number });
 
-      res.status(201).json({
-        message: 'Sparepart created successfully',
-        sparepart: newSparepart,
-      });
+      if (existingSparepart) {
+        // Update data jika material sudah ada
+        existingSparepart.namaPart = namaPart;
+        existingSparepart.stock = stock;
+        existingSparepart.harga = harga;
+        existingSparepart.updatedAt = Date.now();
+
+        await existingSparepart.save();
+        res.status(200).json({
+          message: 'Sparepart updated successfully',
+          sparepart: existingSparepart,
+        });
+      } else {
+        // Buat data baru jika material belum ada
+        const newSparepart = new Sparepart_2({ namaPart, number, stock, harga });
+        await newSparepart.save();
+
+        res.status(201).json({
+          message: 'Sparepart created successfully',
+          sparepart: newSparepart,
+        });
+      }
     } catch (error) {
-      res.status(500).json({ message: 'Error creating sparepart', error });
+      res.status(500).json({ message: 'Error processing sparepart', error });
     }
   }
 });
+
 
 
 
