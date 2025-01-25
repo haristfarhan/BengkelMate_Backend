@@ -83,7 +83,7 @@ router.post('/upload', async (req, res) => {
 // GET All Spareparts (Hanya yang tidak dihapus)
 router.get('/', async (req, res) => {
   try {
-    const spareparts = await Sparepart.find({ isDeleted: false });
+    const spareparts = await Sparepart_2.find({ isDeleted: false });
     res.status(200).json({ spareparts });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching spareparts', error });
@@ -95,7 +95,7 @@ router.get('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const sparepart = await Sparepart.findOne({ _id: id, isDeleted: false });
+    const sparepart = await Sparepart_2.findOne({ _id: id, isDeleted: false });
     if (!sparepart) {
       return res.status(404).json({ message: 'Sparepart not found' });
     }
@@ -111,7 +111,7 @@ router.patch('/:id', async (req, res) => {
   const updates = req.body;
 
   try {
-    const updatedSparepart = await Sparepart.findByIdAndUpdate(
+    const updatedSparepart = await Sparepart_2.findByIdAndUpdate(
       id,
       { ...updates, updatedAt: Date.now() },
       { new: true, runValidators: true }
@@ -133,7 +133,7 @@ router.put('/:id', async (req, res) => {
   const { namaPart, number, stock, harga } = req.body;
 
   try {
-    const updatedSparepart = await Sparepart.findByIdAndUpdate(
+    const updatedSparepart = await Sparepart_2.findByIdAndUpdate(
       id,
       { namaPart, number, stock, harga, updatedAt: Date.now() },
       { new: true, runValidators: true }
@@ -154,7 +154,7 @@ router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deletedSparepart = await Sparepart.findByIdAndUpdate(
+    const deletedSparepart = await Sparepart_2.findByIdAndUpdate(
       id,
       { isDeleted: true, updatedAt: Date.now() },
       { new: true }
