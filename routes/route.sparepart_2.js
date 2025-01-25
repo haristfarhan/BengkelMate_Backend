@@ -38,8 +38,7 @@ router.post('/', async (req, res) => {
         }
 
         let totalProcessed = 0;
-        const updatedItems = [];
-        const newItems = [];
+        const processedData = []; // Array untuk menyimpan data yang diproses
 
         // Proses tiap batch
         for (const batch of batches) {
@@ -53,6 +52,14 @@ router.post('/', async (req, res) => {
             if (!materialNumber || !materialName || totalQty === undefined || retailPrice === undefined) {
               throw new Error(`Invalid row: Material, Material Name, Total Qty., and Retail are required.`);
             }
+
+            // Tambahkan data yang diproses ke array
+            processedData.push({
+              namaPart: materialName,
+              number: materialNumber,
+              stock: totalQty,
+              harga: retailPrice,
+            });
 
             // Bulk operation: Upsert
             return {
@@ -73,25 +80,13 @@ router.post('/', async (req, res) => {
 
           // Jalankan operasi batch menggunakan bulkWrite
           const result = await Sparepart_2.bulkWrite(bulkOps);
-
-          // Tambahkan jumlah data yang diproses
-          totalProcessed += result.upsertedCount + result.modifiedCount;
-
-          // Identifikasi data baru dan yang diperbarui
-          for (const op of bulkOps) {
-            if (result.upsertedIds[op.updateOne.filter.number]) {
-              newItems.push(op.updateOne.update.$set); // Data baru
-            } else {
-              updatedItems.push(op.updateOne.update.$set); // Data yang diperbarui
-            }
-          }
+          totalProcessed += result.upsertedCount + result.modifiedCount; // Tambahkan jumlah data yang diproses
         }
 
         res.status(200).json({
           message: 'Data updated successfully',
           totalProcessed,
-          updatedItems,
-          newItems,
+          processedData,
         });
       } catch (error) {
         res.status(500).json({ message: 'Error processing file', error: error.message });
@@ -102,32 +97,15 @@ router.post('/', async (req, res) => {
     const { namaPart, number, stock, harga } = req.body;
 
     try {
-      const existingSparepart = await Sparepart_2.findOne({ number });
+      const newSparepart = new Sparepart_2({ namaPart, number, stock, harga });
+      await newSparepart.save();
 
-      if (existingSparepart) {
-        // Update data jika material sudah ada
-        existingSparepart.namaPart = namaPart;
-        existingSparepart.stock = stock;
-        existingSparepart.harga = harga;
-        existingSparepart.updatedAt = Date.now();
-
-        await existingSparepart.save();
-        res.status(200).json({
-          message: 'Sparepart updated successfully',
-          sparepart: existingSparepart,
-        });
-      } else {
-        // Buat data baru jika material belum ada
-        const newSparepart = new Sparepart_2({ namaPart, number, stock, harga });
-        await newSparepart.save();
-
-        res.status(201).json({
-          message: 'Sparepart created successfully',
-          sparepart: newSparepart,
-        });
-      }
+      res.status(201).json({
+        message: 'Sparepart created successfully',
+        sparepart: newSparepart,
+      });
     } catch (error) {
-      res.status(500).json({ message: 'Error processing sparepart', error });
+      res.status(500).json({ message: 'Error creating sparepart', error });
     }
   }
 });
