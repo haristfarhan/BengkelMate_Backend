@@ -4,79 +4,99 @@ import Sparepart_2 from '../models/sparepart_2.js';
 
 const router = express.Router();
 
-router.post('/upload', async (req, res) => {
-  const upload = req.upload.single('file'); // Middleware untuk menerima satu file
+router.post('/', async (req, res) => {
+  const upload = req.upload.single('file'); // Middleware untuk menerima file
 
-  upload(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({ message: 'File upload error', error: err.message });
-    }
+  // Cek apakah ada file yang diunggah
+  if (req.headers['content-type']?.includes('multipart/form-data')) {
+    // Jika request adalah multipart/form-data, proses file unggahan
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ message: 'File upload error', error: err.message });
+      }
 
-    const file = req.file; // File yang diunggah
-    if (!file) {
-      return res.status(400).json({ message: 'Please upload a file' });
-    }
+      const file = req.file; // File yang diunggah
+      if (!file) {
+        return res.status(400).json({ message: 'Please upload a file' });
+      }
+
+      try {
+        // Membaca file dari buffer menggunakan xlsx
+        const workbook = xlsx.read(file.buffer, { type: 'buffer' });
+
+        // Ambil sheet pertama
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+        // Konversi sheet ke JSON
+        const data = xlsx.utils.sheet_to_json(sheet);
+
+        // Proses data: kelompokkan data menjadi batch (misal 100 data per batch)
+        const batchSize = 100;
+        const batches = [];
+        for (let i = 0; i < data.length; i += batchSize) {
+          batches.push(data.slice(i, i + batchSize));
+        }
+
+        let totalProcessed = 0;
+
+        // Proses tiap batch
+        for (const batch of batches) {
+          const bulkOps = batch.map((row) => {
+            const materialNumber = row['Material'];
+            const materialName = row['Material Name'];
+            const totalQty = row['Total Qty.'];
+            const retailPrice = row['retail '];
+
+            // Validasi kolom wajib
+            if (!materialNumber || !materialName || totalQty === undefined || retailPrice === undefined) {
+              throw new Error(`Invalid row: Material, Material Name, Total Qty., and Retail are required.`);
+            }
+
+            // Bulk operation: Upsert
+            return {
+              updateOne: {
+                filter: { number: materialNumber },
+                update: {
+                  $set: {
+                    namaPart: materialName,
+                    stock: totalQty,
+                    harga: retailPrice,
+                    updatedAt: Date.now(),
+                  },
+                },
+                upsert: true, // Buat dokumen baru jika tidak ada
+              },
+            };
+          });
+
+          // Jalankan operasi batch menggunakan bulkWrite
+          const result = await Sparepart_2.bulkWrite(bulkOps);
+          totalProcessed += result.upsertedCount + result.modifiedCount; // Tambahkan jumlah data yang diproses
+        }
+
+        res.status(200).json({ message: 'Data updated successfully', totalProcessed });
+      } catch (error) {
+        res.status(500).json({ message: 'Error processing file', error: error.message });
+      }
+    });
+  } else {
+    // Jika request adalah JSON, tambahkan satu sparepart
+    const { namaPart, number, stock, harga } = req.body;
 
     try {
-      // Membaca file dari buffer menggunakan xlsx
-      const workbook = xlsx.read(file.buffer, { type: 'buffer' });
+      const newSparepart = new Sparepart_2({ namaPart, number, stock, harga });
+      await newSparepart.save();
 
-      // Ambil sheet pertama
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-      // Konversi sheet ke JSON
-      const data = xlsx.utils.sheet_to_json(sheet);
-
-      // Proses data: kelompokkan data menjadi batch (misal 100 data per batch)
-      const batchSize = 100;
-      const batches = [];
-      for (let i = 0; i < data.length; i += batchSize) {
-        batches.push(data.slice(i, i + batchSize));
-      }
-
-      let totalProcessed = 0;
-
-      // Proses tiap batch
-      for (const batch of batches) {
-        const bulkOps = batch.map((row) => {
-          const materialNumber = row['Material'];
-          const materialName = row['Material Name'];
-          const totalQty = row['Total Qty.'];
-          const retailPrice = row['retail '];
-
-          // Validasi kolom wajib
-          if (!materialNumber || !materialName || totalQty === undefined || retailPrice === undefined) {
-            throw new Error(`Invalid row: Material, Material Name, Total Qty., and Retail are required.`);
-          }
-
-          // Bulk operation: Upsert
-          return {
-            updateOne: {
-              filter: { number: materialNumber },
-              update: {
-                $set: {
-                  namaPart: materialName,
-                  stock: totalQty,
-                  harga: retailPrice,
-                  updatedAt: Date.now(),
-                },
-              },
-              upsert: true, // Buat dokumen baru jika tidak ada
-            },
-          };
-        });
-
-        // Jalankan operasi batch menggunakan bulkWrite
-        const result = await Sparepart_2.bulkWrite(bulkOps);
-        totalProcessed += result.upsertedCount + result.modifiedCount; // Tambahkan jumlah data yang diproses
-      }
-
-      res.status(200).json({ message: 'Data updated successfully', totalProcessed });
+      res.status(201).json({
+        message: 'Sparepart created successfully',
+        sparepart: newSparepart,
+      });
     } catch (error) {
-      res.status(500).json({ message: 'Error processing file', error: error.message });
+      res.status(500).json({ message: 'Error creating sparepart', error });
     }
-  });
+  }
 });
+
 
 
 
