@@ -38,7 +38,6 @@ router.post('/', async (req, res) => {
         }
 
         let totalProcessed = 0;
-        const processedData = []; // Array untuk menyimpan data yang diproses
 
         // Proses tiap batch
         for (const batch of batches) {
@@ -52,14 +51,6 @@ router.post('/', async (req, res) => {
             if (!materialNumber || !materialName || totalQty === undefined || retailPrice === undefined) {
               throw new Error(`Invalid row: Material, Material Name, Total Qty., and Retail are required.`);
             }
-
-            // Tambahkan data yang diproses ke array
-            processedData.push({
-              namaPart: materialName,
-              number: materialNumber,
-              stock: totalQty,
-              harga: retailPrice,
-            });
 
             // Bulk operation: Upsert
             return {
@@ -83,11 +74,7 @@ router.post('/', async (req, res) => {
           totalProcessed += result.upsertedCount + result.modifiedCount; // Tambahkan jumlah data yang diproses
         }
 
-        res.status(200).json({
-          message: 'Data updated successfully',
-          totalProcessed,
-          processedData,
-        });
+        res.status(200).json({ message: 'Data updated successfully', totalProcessed });
       } catch (error) {
         res.status(500).json({ message: 'Error processing file', error: error.message });
       }
@@ -109,7 +96,6 @@ router.post('/', async (req, res) => {
     }
   }
 });
-
 
 
 
