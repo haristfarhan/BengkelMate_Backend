@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import Summary from '../models/summary.js';
 import Layanan from '../models/layanan.js';
-import Sparepart from '../models/sparepart.js';
+import Sparepart_2 from '../models/sparepart_2.js';
 import PKB from '../models/pkb.js';
 
 const router = Router();
@@ -28,7 +28,7 @@ const calculateDetails = async (layanan, sparepart) => {
 
   // Hitung total harga sparepart
   for (const item of sparepart) {
-    const sparepartDetail = await Sparepart.findOne({ namaPart: item.namaPart });
+    const sparepartDetail = await Sparepart_2.findOne({ namaPart: item.namaPart });
     if (!sparepartDetail) throw new Error(`Sparepart "${item.namaPart}" not found`);
     const total = sparepartDetail.harga * item.quantity;
     totalHarga += total;
